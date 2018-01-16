@@ -2,7 +2,6 @@ package bongo
 
 import (
 	"errors"
-	"github.com/go-bongo/go-dotaccess"
 	"github.com/maxwellhealth/go-dotaccess"
 	"github.com/oleiade/reflections"
 	"gopkg.in/mgo.v2"

@@ -68,6 +68,8 @@ func (v *ValidationError) Error() string {
 
 type Collection struct {
 	Name       string
+	Database   string
+	Context    *Context
 	Connection *Connection
 }
 
@@ -82,12 +84,14 @@ func (d DocumentNotFoundError) Error() string {
 	return "Document not found"
 }
 
+// Collection ...
 func (c *Collection) Collection() *mgo.Collection {
-	return c.Connection.Session.DB(c.Connection.Config.Database).C(c.Name)
+	return c.Connection.Session.DB(c.Database).C(c.Name)
 }
 
+// CollectionOnSession ...
 func (c *Collection) collectionOnSession(sess *mgo.Session) *mgo.Collection {
-	return sess.DB(c.Connection.Config.Database).C(c.Name)
+	return sess.DB(c.Database).C(c.Name)
 }
 
 func (c *Collection) PreSave(doc Document) error {
@@ -132,10 +136,11 @@ func (c *Collection) Save(doc Document) error {
 	// Add created/modified time. Also set on the model itself if it has those fields.
 	now := time.Now()
 
-	if tt, ok := doc.(TimeTracker); ok {
-		if isNew {
-			tt.SetCreated(now)
-		}
+	if tt, ok := doc.(TimeCreatedTracker); ok && isNew {
+		tt.SetCreated(now)
+	}
+
+	if tt, ok := doc.(TimeModifiedTracker); ok {
 		tt.SetModified(now)
 	}
 
@@ -181,7 +186,7 @@ func (c *Collection) FindById(id bson.ObjectId, doc interface{}) error {
 	// Handle errors coming from mgo - we want to convert it to a DocumentNotFoundError so people can figure out
 	// what the error type is without looking at the text
 	if err != nil {
-		if err.Error() == "not found" {
+		if err == mgo.ErrNotFound {
 			return &DocumentNotFoundError{}
 		} else {
 			return err
